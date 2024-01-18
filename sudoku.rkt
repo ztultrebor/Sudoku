@@ -28,6 +28,9 @@
 (define ZONES (append ROWS COLUMNS BLOCKS))
 (define ITERATOR (build-list 81 identity))
 (define INTS (build-list 9 add1))
+(define TEXTSIZE 24)
+(define SQUARE (rectangle TEXTSIZE TEXTSIZE "solid" "white"))
+(define BLANKTANGLE (rectangle 0 0 "solid" "white"))
 
 
 
@@ -40,7 +43,7 @@
   ;  solves the sudoku puzzle by determining the next square to focus on,
   ; and what numbers to try
   (local (
-          (define filled-blanks (map (λ (sq) (possibilities sq bd)) ITERATOR))
+          (define filled-blanks (possibilities bd))
           (define focus-square (@minimum (n-possible filled-blanks)))
           (define best-guesses (list-ref filled-blanks focus-square))
           (define (square-filler guesses)
@@ -69,23 +72,27 @@
     (square-filler best-guesses)))
 
 
-(define (possibilities n board)
+(define (possibilities board)
   ; N [ListOf N] -> N
-  ; derive the list of possible values that can naiively solve square n
-  (cond
-    [(> (read-square n board) 0) #f]
-    [else
-     (local (
-             (define squares
-               (foldr append '() (filter (λ (z) (member? n z)) ZONES)))
-             (define impossibilities
-               (list-to-set (map (λ (m) (read-square m board)) squares)))
-             (define (pare l-obj l-subj)
-               (cond
-                 [(empty? l-obj) l-subj]
-                 [else (pare (rest l-obj) (remove (first l-obj) l-subj))])))
-       ; - IN -
-       (pare impossibilities INTS))]))
+  ; derive the list of possible values that can naiively solve
+  ; each and every square, Returns #false if square has a value
+  (local (
+          (define (pare l-obj l-subj)
+            (if (empty? l-obj) l-subj
+                (pare (rest l-obj) (remove (first l-obj) l-subj))))
+          (define (rastor n bd)
+            (if (> (read-square n bd) 0) #f
+                (local (
+                        (define exclusion-zone
+                          (foldr append '()
+                                 (filter (λ (z) (member? n z)) ZONES)))
+                        (define impossibilities
+                          (list-to-set
+                           (map (λ (m) (read-square m bd)) exclusion-zone))))
+                  ; - IN -
+                  (pare impossibilities INTS)))))
+    ; - IN -
+    (map (λ (n) (rastor n board)) ITERATOR)))
 
 
 (define (read-square n board)
@@ -147,6 +154,8 @@
                       (rest (formatter-suff rze)))
                      (sub1 n))]))
           (define (board->rows rze)
+            ; [[ListOf N] [ListOf N] -> [ListOf [ListOf N]]
+            ; convers a solved board into 9 rows of 9
             (cond 
               [(empty? (formatter-suff rze)) (list (formatter-pref rze))]
               [else (local (
@@ -156,10 +165,15 @@
                              (make-formatter '() (formatter-suff stuff)))))]))
           (define rows (board->rows (make-formatter '() board))))
     ; - IN -
-    (foldr above (rectangle 0 0 "solid" "white")
-           (map (λ (r) (foldl beside (rectangle 0 0 "solid" "white")
-                              (map (λ (n) (overlay (text (number->string n) 24 "green")
-                                                   (rectangle 24 24 "solid" "white"))) r))) rows))))
+    (foldr above BLANKTANGLE
+           (map (λ (r) (foldl beside BLANKTANGLE
+                              (map display-square r))) rows))))
+
+
+(define (display-square n)
+  ; N -> Img
+  ; generates a visually appealing image of a sudoku square
+  (overlay (text (if (= n 0) "" (number->string n)) TEXTSIZE "green") SQUARE))
 
 
 
