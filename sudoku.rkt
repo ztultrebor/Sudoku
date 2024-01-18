@@ -1,6 +1,9 @@
 ;; The first three lines of this file were inserted by DrRacket. They record metadata
 ;; about the language level of this file in a form that our tools can easily process.
 #reader(lib "htdp-intermediate-lambda-reader.ss" "lang")((modname sudoku) (read-case-sensitive #t) (teachpacks ()) (htdp-settings #(#t constructor repeating-decimal #f #t none #f () #f)))
+(require 2htdp/image)
+
+
 ; =========================
 ; constants
 
@@ -42,12 +45,10 @@
     (cond
       [(= minsk 0) '()]
       [(> minsk 9) board]
-      ;[(solved? board) board]
-      ;[else (solve (try (first (list-ref solns square-id)) square-id board))]
       [else
        (foldr append '() (map solve
-        (map (λ (n) (try n square-id board))
-             (list-ref solns square-id))))])))
+                              (map (λ (n) (try n square-id board))
+                                   (list-ref solns square-id))))])))
 
   
 (define (possibilities n board)
@@ -122,9 +123,32 @@
     [else (cons (first lst) (list-to-set (rest lst)))]))
 
 
-(define (solved? board)
-  (not (ormap (λ (s) (= 0)) board)))
-  
+(define (display board)
+  (local (
+          (define-struct formatter [pref suff])
+          (define (get-row rze n)
+            (cond
+              [(= n 0) rze]
+              [else (get-row
+                     (make-formatter
+                      (cons (first (formatter-suff rze)) (formatter-pref rze))
+                                (rest (formatter-suff rze)))
+                     (sub1 n))]))
+          (define (board->rows rze)
+            (cond 
+              [(empty? (formatter-suff rze)) (list (formatter-pref rze))]
+              [else (local (
+                            (define stuff (get-row rze 9)))
+                      (cons (formatter-pref stuff)
+                            (board->rows
+                             (make-formatter '() (formatter-suff stuff)))))]))
+    (define rows (board->rows (make-formatter '() board))))
+    ; - IN -
+    (foldr above (rectangle 0 0 "solid" "white")
+           (map (λ (r) (foldl beside (rectangle 0 0 "solid" "white")
+           (map (λ (n) (overlay (text (number->string n) 24 "green")
+                      (rectangle 24 24 "solid" "white"))) r))) rows))))
+
 
 
 ; ============================
@@ -152,5 +176,6 @@
                        0 0 0 3 0 0 2 6 0))
 
 
-
-(solve sudoku)
+(display sudoku)
+(rectangle 24 24 "solid" "white" )
+(display (solve sudoku))
