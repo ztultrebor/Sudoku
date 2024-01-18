@@ -35,22 +35,41 @@
 ; functions
 
 
-(define (solve board)
+(define (solve bd)
   (local (
-          (define solns (map (λ (sq) (possibilities sq board)) ITERATOR))
+          (define solns (map (λ (sq) (possibilities sq bd)) ITERATOR))
           (define minimal (n-possible solns))
           (define square-id (@minimum minimal))
-          (define minsk (list-ref minimal square-id)))
+          (define minsk (list-ref minimal square-id))
+          (define possible-vals (list-ref solns square-id))
+          (define (untersolver pvs)
+            ; [ListOf N] -> [Maybe [ListOf N]]
+            ; coordinates the backtracking aspects such that search stops as
+            ; soon as a solution has been identified
+            (cond
+              [(empty? pvs) #f]
+              [(= minsk 0) #f]
+              ; if only remaining solution list length is 100, it's solved!
+              [(= minsk 100) bd]
+              [else
+               (local (
+                       (define candidate
+                         (solve (try (first pvs) square-id bd))))
+                 ; - IN -
+                 (cond
+                   [(false? candidate) (untersolver (rest pvs))]
+                   [else candidate]))]))
+          (define (try num sq board)
+            ; N N -> [ListOf N]
+            ; tries a solution at the seemingly most solvable square
+            (cond
+              [(empty? board) '()]
+              [(= 0 sq) (cons num (rest board))]
+              [else (cons (first board) (try num (sub1 sq) (rest board)))])))
     ; - IN -
-    (cond
-      [(= minsk 0) '()]
-      [(> minsk 9) board]
-      [else
-       (foldr append '() (map solve
-                              (map (λ (n) (try n square-id board))
-                                   (list-ref solns square-id))))])))
+    (untersolver possible-vals)))
 
-  
+
 (define (possibilities n board)
   ; N [ListOf N] -> N
   ; derive the list of possible values that can naiively solve square n
@@ -84,7 +103,7 @@
   (local (
           (define (len x)
             (cond
-              [(false? x) 100]
+              [(false? x) 100] ; set solved list length to 100 (approx infty)
               [else (length x)])))
     ; - IN -
     (map len maybe-lst)))
@@ -105,15 +124,6 @@
     (leastest lst 10 0 0)))
 
 
-(define (try num sq board)
-  ; N N [ListOf N] -> [ListOf N]
-  ; tries a solution at the seemingly most solvable square
-  (cond
-    [(empty? board) '()]
-    [(= 0 sq) (cons num (rest board))]
-    [else (cons (first board) (try num (sub1 sq) (rest board)))]))
-
-
 (define (list-to-set lst)
   ; [ListOf X] -> [ListOf X]
   ; converts a list into a set
@@ -123,7 +133,10 @@
     [else (cons (first lst) (list-to-set (rest lst)))]))
 
 
+;; !!! refactor this
 (define (display board)
+  ; [ListOf X] -> Img
+  ; displays the state of the sudoku board
   (local (
           (define-struct formatter [pref suff])
           (define (get-row rze n)
@@ -132,7 +145,7 @@
               [else (get-row
                      (make-formatter
                       (cons (first (formatter-suff rze)) (formatter-pref rze))
-                                (rest (formatter-suff rze)))
+                      (rest (formatter-suff rze)))
                      (sub1 n))]))
           (define (board->rows rze)
             (cond 
@@ -142,12 +155,12 @@
                       (cons (formatter-pref stuff)
                             (board->rows
                              (make-formatter '() (formatter-suff stuff)))))]))
-    (define rows (board->rows (make-formatter '() board))))
+          (define rows (board->rows (make-formatter '() board))))
     ; - IN -
     (foldr above (rectangle 0 0 "solid" "white")
            (map (λ (r) (foldl beside (rectangle 0 0 "solid" "white")
-           (map (λ (n) (overlay (text (number->string n) 24 "green")
-                      (rectangle 24 24 "solid" "white"))) r))) rows))))
+                              (map (λ (n) (overlay (text (number->string n) 24 "green")
+                                                   (rectangle 24 24 "solid" "white"))) r))) rows))))
 
 
 
@@ -174,7 +187,6 @@
                        0 0 2 0 0 8 0 0 0
                        6 4 0 0 0 0 9 0 3
                        0 0 0 3 0 0 2 6 0))
-
 
 (display sudoku)
 (rectangle 24 24 "solid" "white" )
