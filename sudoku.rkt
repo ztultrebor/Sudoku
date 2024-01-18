@@ -36,38 +36,37 @@
 
 
 (define (solve bd)
+  ; [ListOf N] -> [ListOf N]
+  ;  solves the sudoku puzzle by determining the next square to focus on,
+  ; and what numbers to try
   (local (
-          (define solns (map (λ (sq) (possibilities sq bd)) ITERATOR))
-          (define minimal (n-possible solns))
-          (define square-id (@minimum minimal))
-          (define minsk (list-ref minimal square-id))
-          (define possible-vals (list-ref solns square-id))
-          (define (untersolver pvs)
+          (define filled-blanks (map (λ (sq) (possibilities sq bd)) ITERATOR))
+          (define focus-square (@minimum (n-possible filled-blanks)))
+          (define best-guesses (list-ref filled-blanks focus-square))
+          (define (square-filler guesses)
             ; [ListOf N] -> [Maybe [ListOf N]]
-            ; coordinates the backtracking aspects such that search stops as
-            ; soon as a solution has been identified
+            ; coordinates the backtracking aspects by filling squares
+            ; one-by-onesuch that search stops as soon as a solution
+            ; has been identified
             (cond
-              [(empty? pvs) #f]
-              [(= minsk 0) #f]
-              ; if only remaining solution list length is 100, it's solved!
-              [(= minsk 100) bd]
+              [(empty? guesses) #f]
+              [(andmap (λ (n) (> n 0)) bd) bd]
               [else
                (local (
-                       (define candidate
-                         (solve (try (first pvs) square-id bd))))
+                       (define candidate-soln
+                         (solve (try (first guesses) focus-square bd))))
                  ; - IN -
-                 (cond
-                   [(false? candidate) (untersolver (rest pvs))]
-                   [else candidate]))]))
-          (define (try num sq board)
+                 (if (false? candidate-soln)
+                     (square-filler (rest guesses))
+                     candidate-soln))]))
+          (define (try num sqid board)
             ; N N -> [ListOf N]
             ; tries a solution at the seemingly most solvable square
-            (cond
-              [(empty? board) '()]
-              [(= 0 sq) (cons num (rest board))]
-              [else (cons (first board) (try num (sub1 sq) (rest board)))])))
+            (if (= 0 sqid)
+                (cons num (rest board))
+                (cons (first board) (try num (sub1 sqid) (rest board))))))
     ; - IN -
-    (untersolver possible-vals)))
+    (square-filler best-guesses)))
 
 
 (define (possibilities n board)
@@ -103,7 +102,7 @@
   (local (
           (define (len x)
             (cond
-              [(false? x) 100] ; set solved list length to 100 (approx infty)
+              [(false? x) 100] ; need large # in case of solved so to skip it
               [else (length x)])))
     ; - IN -
     (map len maybe-lst)))
