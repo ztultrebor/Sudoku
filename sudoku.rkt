@@ -34,16 +34,20 @@
 
 (define (solve board)
   (local (
-          (define solns (map (λ (sq) (possibilities sq sudoku)) ITERATOR))
+          (define solns (map (λ (sq) (possibilities sq board)) ITERATOR))
           (define minimal (n-possible solns))
           (define square-id (@minimum minimal))
           (define minsk (list-ref minimal square-id)))
     ; - IN -
     (cond
-      [(= 0 minsk) #f]
-      [(solved? board) board]
+      [(= minsk 0) '()]
+      [(> minsk 9) board]
+      ;[(solved? board) board]
+      ;[else (solve (try (first (list-ref solns square-id)) square-id board))]
       [else
-       (map (λ (n) (try n square-id board)) (list-ref solns square-id))])))
+       (foldr append '() (map solve
+        (map (λ (n) (try n square-id board))
+             (list-ref solns square-id))))])))
 
   
 (define (possibilities n board)
@@ -97,7 +101,7 @@
               [(< (first lst) mn) (leastest (rest lst) (first lst) n (add1 n))]
               [else (leastest (rest lst) mn i (add1 n))])))
     ; - IN -
-    (leastest lst 10 -1 0)))
+    (leastest lst 10 0 0)))
 
 
 (define (try num sq board)
@@ -120,23 +124,33 @@
 
 (define (solved? board)
   (not (ormap (λ (s) (= 0)) board)))
+  
 
 
 ; ============================
 ; action!
 
-(define sudoku (list 8 0 4 2 0 0 1 5 0
-                     3 0 0 0 0 9 0 0 0
-                     0 0 0 0 0 0 0 0 8
-                     0 5 0 0 2 0 0 0 0
-                     0 0 0 0 0 0 0 6 0
-                     0 0 1 5 0 0 7 4 0
-                     0 0 8 0 0 0 0 0 2
-                     4 0 0 0 3 0 8 7 0
-                     0 0 0 7 0 0 0 0 6))
+(define sudoku (list 6 0 0 0 0 0 0 0 9
+                     0 0 2 1 0 0 0 5 7
+                     0 3 0 0 2 0 0 0 0
+                     0 0 0 6 0 0 3 0 0
+                     0 0 5 0 0 0 9 0 0
+                     0 8 0 0 0 7 0 6 5
+                     0 0 3 7 0 0 0 1 2
+                     4 0 0 0 0 8 0 0 0
+                     0 0 0 0 0 0 6 0 0))
 
-(define s1 (first (solve sudoku)))
-(define s2 (first (solve s1)))
-(define s3 (first (solve s2)))
-(define s4 (first (solve s3)))
-(map (λ (sq) (possibilities sq s4)) ITERATOR)
+
+(define easydoku (list 2 8 0 0 0 3 0 7 0
+                       0 0 0 6 0 0 0 0 9
+                       0 5 6 4 0 7 0 0 0
+                       0 6 3 1 2 0 7 9 8
+                       0 0 0 8 5 0 0 0 4
+                       8 1 4 7 3 0 6 5 0
+                       0 0 2 0 0 8 0 0 0
+                       6 4 0 0 0 0 9 0 3
+                       0 0 0 3 0 0 2 6 0))
+
+
+
+(solve sudoku)
